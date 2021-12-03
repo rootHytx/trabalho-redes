@@ -8,7 +8,8 @@ import java.util.*;
 public class ChatServer
 {
   // A pre-allocated buffer for the received data
-  static private final ByteBuffer buffer = ByteBuffer.allocate( 16384 );
+  static private final int size = 10000;
+  static private ByteBuffer buffer = ByteBuffer.allocate( size );
 
   // Decoder for incoming text -- assume UTF-8
   static private final Charset charset = Charset.forName("UTF8");
@@ -138,29 +139,42 @@ public class ChatServer
 
     // Decode and print the message to stdout
     buffer.clear();
-    String message = decoder.decode(buffer).toString();
-    System.out.print(message);
+    String message = decoder.decode(buffer).toString().trim();
+    System.out.println(message);
     buffer.flip();
-    for(int i=0;i<commands.length;i++){    
-        if(message.charAt(0)=='/' && message.split(" ")[0].substring(1,message.length()).equals(commands[i])){
+    
+    if(message.length()>0 && message.charAt(0)=='/'){
+      message = message.substring(1,message.length());
+      for(int i=0;i<commands.length;i++){
+        System.out.println(message.split(" ")[0]);
+        if(message.split(" ")[0].equals(commands[i])){
           isCommand=1;
           buffer.clear();
-          message+= " : THIS IS A COMMAND!!!!";
+          message += " -> THIS IS A COMMAND!!!!!!!!!!";
           buffer.put(message.getBytes());
+          System.out.println("got to put bytes");
           buffer.flip();
           buffer.clear();
-          sc.write(buffer);
+          while(buffer.hasRemaining()){
+            sc.write(buffer);
+          }
+          buffer = buffer.wrap(new byte[size]);
+          System.out.println("wrote to buffer");
           buffer.flip();
           buffer.clear();
+          break;
         }
+      }
     }
     if(isCommand==0){
       buffer.clear();
+      System.out.println("after / check : " + message);
       buffer.put(message.getBytes());
       System.out.println("got to put bytes");
       buffer.flip();
       buffer.clear();
       sc.write(buffer);
+      buffer = buffer.wrap(new byte[size]);
       System.out.println("wrote to buffer");
       buffer.flip();
       buffer.clear();
