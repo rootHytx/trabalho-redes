@@ -76,14 +76,17 @@ public class ChatClient {
     // na caixa de entrada
     public void newMessage(String message) throws IOException {
         // PREENCHER AQUI com código que envia a mensagem ao servidor
+        System.out.println(message);
         String serverMessage;
         inFromUser = new BufferedReader(new InputStreamReader(System.in));
         outToServer = new DataOutputStream(clientSocket.getOutputStream());
         inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
         
-        outToServer.writeBytes(message + '\n');
+        outToServer.writeBytes(message + "\n");
         serverMessage = inFromServer.readLine();
-        printMessage("FROM SERVER: " + serverMessage + '\n');
+        serverMessage = "FROM SERVER: " + serverMessage + "\n";
+        System.out.println(serverMessage);
+        printMessage(serverMessage);
         return;
     }
 

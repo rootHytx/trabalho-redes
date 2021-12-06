@@ -9,7 +9,7 @@ public class ChatServer
 {
   // A pre-allocated buffer for the received data
   static private final int size = 10000;
-  static private ByteBuffer buffer = ByteBuffer.allocate( size );
+  static private final ByteBuffer buffer = ByteBuffer.allocate( size );
 
   // Decoder for incoming text -- assume UTF-8
   static private final Charset charset = Charset.forName("UTF8");
@@ -138,46 +138,35 @@ public class ChatServer
     }
 
     // Decode and print the message to stdout
-    buffer.clear();
-    String message = decoder.decode(buffer).toString().trim();
+    String message = decoder.decode(buffer).toString();
     System.out.println(message);
     buffer.flip();
-    
+
     if(message.length()>0 && message.charAt(0)=='/'){
       message = message.substring(1,message.length());
+        System.out.println(message);
       for(int i=0;i<commands.length;i++){
         System.out.println(message.split(" ")[0]);
         if(message.split(" ")[0].equals(commands[i])){
           isCommand=1;
-          buffer.clear();
           message += " -> THIS IS A COMMAND!!!!!!!!!!";
           buffer.put(message.getBytes());
           System.out.println("got to put bytes");
           buffer.flip();
-          buffer.clear();
-          while(buffer.hasRemaining()){
-            sc.write(buffer);
-          }
-          buffer = buffer.wrap(new byte[size]);
+          sc.write(buffer);
           System.out.println("wrote to buffer");
           buffer.flip();
-          buffer.clear();
           break;
         }
       }
     }
     if(isCommand==0){
-      buffer.clear();
       System.out.println("after / check : " + message);
-      buffer.put(message.getBytes());
+      buffer.rewind();
       System.out.println("got to put bytes");
-      buffer.flip();
-      buffer.clear();
       sc.write(buffer);
-      buffer = buffer.wrap(new byte[size]);
       System.out.println("wrote to buffer");
       buffer.flip();
-      buffer.clear();
     }
 
     return true;
