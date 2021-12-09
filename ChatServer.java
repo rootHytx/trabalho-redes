@@ -5,11 +5,21 @@ import java.nio.channels.*;
 import java.nio.charset.*;
 import java.util.*;
 
+class Pair{
+  public String first;
+  public String second;
+  public Pair(String first, String second){
+    this.first = first;
+    this.second = second;
+  }
+}
+
 public class ChatServer
 {
   // A pre-allocated buffer for the received data
   static private final int size = 10000;
-  static private final ByteBuffer buffer = ByteBuffer.allocate( size );
+  static private ByteBuffer buffer = ByteBuffer.allocate( size );
+  static private List<Pair> channels = new ArrayList<>();
 
   // Decoder for incoming text -- assume UTF-8
   static private final Charset charset = Charset.forName("UTF8");
@@ -75,6 +85,8 @@ public class ChatServer
             // Register it with the selector, for reading
             sc.register( selector, SelectionKey.OP_READ );
 
+            channels.add(new Pair(sc.getRemoteAddress().toString().split(":")[sc.getRemoteAddress().toString().split(":").length-1], ""));
+
           } else if (key.isReadable()) {
 
             SocketChannel sc = null;
@@ -126,8 +138,11 @@ public class ChatServer
   // Just read the message from the socket and send it to stdout
   static private boolean processInput( SocketChannel sc ) throws IOException {
     // Read the message to the buffer
+    System.out.println("SocketChannel: " + sc.getRemoteAddress().toString().split(":")[sc.getRemoteAddress().toString().split(":").length-1]);
+    for(int i=0;i<channels.size();i++){
+      System.out.println(channels.get(i).first);
+    }
     String commands[] = {"nick", "join", "leave", "bye", "priv"};
-    int isCommand=0;
     buffer.clear();
     sc.read( buffer );
     buffer.flip();
@@ -142,32 +157,56 @@ public class ChatServer
     System.out.println(message);
     buffer.flip();
 
-    if(message.length()>0 && message.charAt(0)=='/'){
-      message = message.substring(1,message.length());
-        System.out.println(message);
+    /*if(message.length()>0 && message.charAt(0)=='/'){
+      message = message.substring(1,message.length()-1);
+      System.out.println(message);
       for(int i=0;i<commands.length;i++){
         System.out.println(message.split(" ")[0]);
-        if(message.split(" ")[0].equals(commands[i])){
+        System.out.println(commands[i]);
+        if(message.split(" ")[0].trim().equalsIgnoreCase(commands[i])){
           isCommand=1;
-          message += " -> THIS IS A COMMAND!!!!!!!!!!";
-          buffer.put(message.getBytes());
-          System.out.println("got to put bytes");
+          message += " -> THIS IS A COMMAND!!!!!!!!!!\n";
+          System.out.println("got to put bytes as a command");
+          System.out.println(message);
+          sc.write(buffer.wrap(message.getBytes()));
+          System.out.println("wrote to buffer as a command");
           buffer.flip();
-          sc.write(buffer);
-          System.out.println("wrote to buffer");
-          buffer.flip();
-          break;
+          return true;
         }
       }
-    }
-    if(isCommand==0){
       System.out.println("after / check : " + message);
-      buffer.rewind();
       System.out.println("got to put bytes");
-      sc.write(buffer);
+      sc.write(buffer.wrap((message + "\n").getBytes()));
       System.out.println("wrote to buffer");
       buffer.flip();
+      return true;
+    }*/
+    if(message.length()>0 && message.charAt(0)=='/'){
+      message = message.substring(1,message.length()-1);
+      System.out.println(message);
+      if(message.split(" ")[0].trim().equalsIgnoreCase("bye")){
+          sc.write(buffer.wrap((message.split(" ")[0].trim() + "\n").getBytes()));
+          return false;
+      }
+      if(message.split(" ")[0].trim().equalsIgnoreCase("nick")){
+        String name = message.substring(message.split(" ")[0].trim().length()+1,message.length());
+        System.out.println(name);
+        sc.write(buffer.wrap(name.getBytes()));
+        return false;
+      }
+      System.out.println("after / check : " + message);
+      System.out.println("got to put bytes");
+      sc.write(buffer.wrap((message + "\n").getBytes()));
+      System.out.println("wrote to buffer");
+      buffer.flip();
+      return true;
     }
+    System.out.println("after / check : " + message);
+    buffer.rewind();
+    System.out.println("got to put bytes");
+    sc.write(buffer);
+    System.out.println("wrote to buffer");
+    buffer.flip();
 
     return true;
   }

@@ -78,12 +78,12 @@ public class ChatClient {
         // PREENCHER AQUI com código que envia a mensagem ao servidor
         System.out.println(message);
         String serverMessage;
-        inFromUser = new BufferedReader(new InputStreamReader(System.in));
-        outToServer = new DataOutputStream(clientSocket.getOutputStream());
-        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
         
         outToServer.writeBytes(message + "\n");
+        System.out.println("wrote to server");
         serverMessage = inFromServer.readLine();
+        System.out.println("read from server");
+        if(serverMessage.split(" ")[0].trim().equalsIgnoreCase("bye")) System.exit(0);
         serverMessage = "FROM SERVER: " + serverMessage + "\n";
         System.out.println(serverMessage);
         printMessage(serverMessage);
@@ -95,8 +95,9 @@ public class ChatClient {
     public void run() throws IOException {
         // PREENCHER AQUI
         clientSocket = new Socket(server, port);
-
-
+        inFromUser = new BufferedReader(new InputStreamReader(System.in));
+        outToServer = new DataOutputStream(clientSocket.getOutputStream());
+        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
     }
     
 
