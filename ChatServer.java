@@ -5,21 +5,51 @@ import java.nio.channels.*;
 import java.nio.charset.*;
 import java.util.*;
 
-class Pair{
-  public String first;
-  public String second;
-  public Pair(String first, String second){
-    this.first = first;
-    this.second = second;
+static final int size = 10000;
+
+class RoomPair{
+  public String name;
+  public SocketChannel[] users = new SocketChannel[size];
+  public RoomPair(String name){
+    this.name = name;
+  }
+  public add(SocketChannel sc){
+    users.push(sc);
   }
 }
+
+
+class User{
+  public String nick;
+  public SocketChannel sc;
+  public RoomPair room;
+  public User(String nick, SocketChannel sc){
+    this.nick = nick;
+    this.sc = sc;
+  }
+  public User newNick(String newNick){
+    nick=newNick;
+    return this;
+  }
+  public join(RoomPair room){
+    for(int i=0;i<rooms.length;i++){
+      if(room.name==rooms[i].name){
+        rooms.get(i).users.push(sc);
+        return;
+      }
+    }
+    room.users.push(sc);
+    rooms.add(room);
+  }
+}
+
+static List<RoomPair> rooms = new ArrayList<>();
+static List<User> users = new ArrayList<>();
 
 public class ChatServer
 {
   // A pre-allocated buffer for the received data
-  static private final int size = 10000;
   static private ByteBuffer buffer = ByteBuffer.allocate( size );
-  static private List<Pair> channels = new ArrayList<>();
 
   // Decoder for incoming text -- assume UTF-8
   static private final Charset charset = Charset.forName("UTF8");
@@ -84,9 +114,7 @@ public class ChatServer
 
             // Register it with the selector, for reading
             sc.register( selector, SelectionKey.OP_READ );
-
-            channels.add(new Pair(sc.getRemoteAddress().toString().split(":")[sc.getRemoteAddress().toString().split(":").length-1], ""));
-
+            users.add(new User("", sc));
           } else if (key.isReadable()) {
 
             SocketChannel sc = null;
@@ -134,14 +162,28 @@ public class ChatServer
     }
   }
 
-
+  static private boolean changeNick(String newNick, SocketChannel sc){
+    int index, available=1;
+    for(int i=0;i<users.size();i++){
+      cur = users.get(i);
+      if(cur.sc==sc) index=i;
+      if(cur.nick.equals(name)){
+        available=0;
+        break;
+      }
+    }
+    if(available==1){
+      User changedNick = users.get(i)
+      users.get(i) = users.get(i)
+    }
+  }
   // Just read the message from the socket and send it to stdout
   static private boolean processInput( SocketChannel sc ) throws IOException {
     // Read the message to the buffer
-    System.out.println("SocketChannel: " + sc.getRemoteAddress().toString().split(":")[sc.getRemoteAddress().toString().split(":").length-1]);
+    /*System.out.println("SocketChannel: " + sc.getRemoteAddress().toString().split(":")[sc.getRemoteAddress().toString().split(":").length-1]);
     for(int i=0;i<channels.size();i++){
       System.out.println(channels.get(i).first);
-    }
+    }*/
     String commands[] = {"nick", "join", "leave", "bye", "priv"};
     buffer.clear();
     sc.read( buffer );
@@ -191,6 +233,7 @@ public class ChatServer
       if(message.split(" ")[0].trim().equalsIgnoreCase("nick")){
         String name = message.substring(message.split(" ")[0].trim().length()+1,message.length());
         System.out.println(name);
+        
         sc.write(buffer.wrap(name.getBytes()));
         return false;
       }
