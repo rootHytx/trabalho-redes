@@ -69,6 +69,10 @@ public class ChatClient {
         // construtor, deve ser colocado aqui
         this.server=server;
         this.port=port;
+        clientSocket = new Socket(server, port);
+        inFromUser = new BufferedReader(new InputStreamReader(System.in));
+        outToServer = new DataOutputStream(clientSocket.getOutputStream());
+        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
     }
 
 
@@ -94,10 +98,10 @@ public class ChatClient {
     // Método principal do objecto
     public void run() throws IOException {
         // PREENCHER AQUI
-        clientSocket = new Socket(server, port);
+        /*clientSocket = new Socket(server, port);
         inFromUser = new BufferedReader(new InputStreamReader(System.in));
         outToServer = new DataOutputStream(clientSocket.getOutputStream());
-        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));*/
     }
     
 

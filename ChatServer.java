@@ -5,51 +5,74 @@ import java.nio.channels.*;
 import java.nio.charset.*;
 import java.util.*;
 
-static final int size = 10000;
 
-class RoomPair{
+class Room{
   public String name;
-  public SocketChannel[] users = new SocketChannel[size];
-  public RoomPair(String name){
+  public List<SocketChannel> usersInRoom = new ArrayList<>();
+  public Room(String name){
     this.name = name;
   }
-  public add(SocketChannel sc){
-    users.push(sc);
+  public void add(SocketChannel sc){
+    usersInRoom.add(sc);
   }
 }
 
+class Rooms{
+  public List<Room> rooms = new ArrayList<>();
+  public Room find(String name){
+    for(int i=0;i<rooms.size();i++){
+      if(rooms.get(i).name==name) return rooms.get(i);
+    }
+    return null;
+  }
+}
 
 class User{
-  public String nick;
+  public String nick = "";
   public SocketChannel sc;
-  public RoomPair room;
-  public User(String nick, SocketChannel sc){
-    this.nick = nick;
+  public Room room;
+  public User(SocketChannel sc){
     this.sc = sc;
-  }
-  public User newNick(String newNick){
-    nick=newNick;
-    return this;
-  }
-  public join(RoomPair room){
-    for(int i=0;i<rooms.length;i++){
-      if(room.name==rooms[i].name){
-        rooms.get(i).users.push(sc);
-        return;
-      }
-    }
-    room.users.push(sc);
-    rooms.add(room);
   }
 }
 
-static List<RoomPair> rooms = new ArrayList<>();
-static List<User> users = new ArrayList<>();
+class Users{
+  public List<User> users = new ArrayList<>();
+  public void add(SocketChannel sc){
+    users.add(new User(sc));
+  }
+  public void remove(SocketChannel sc, Users usersSuperior){
+    users.remove(usersSuperior.getWithSC(sc));
+  }
+  public boolean changeNick(String name, SocketChannel sc, Users usersSuperior){
+    User toChange = usersSuperior.getWithSC(sc);
+    for(int i=0;i<users.size();i++){
+      if(users.get(i).nick.equals(name) && users.get(i)!=toChange) return false;
+    }
+    usersSuperior.getWithSC(sc).nick=name;
+    return true;
+  }
+  public User getWithNick(String nick){
+    for(int i=0;i<users.size();i++){
+      if(users.get(i).nick==nick) return users.get(i);
+    }
+    return null;
+  }
+  public User getWithSC(SocketChannel sc){
+    for(int i=0;i<users.size();i++){
+      if(users.get(i).sc==sc) return users.get(i);
+    }
+    return null;
+  }
+}
 
 public class ChatServer
 {
   // A pre-allocated buffer for the received data
+  static final int size = 10000;
   static private ByteBuffer buffer = ByteBuffer.allocate( size );
+  static Users users = new Users();
+  static Rooms rooms = new Rooms();
 
   // Decoder for incoming text -- assume UTF-8
   static private final Charset charset = Charset.forName("UTF8");
@@ -114,7 +137,7 @@ public class ChatServer
 
             // Register it with the selector, for reading
             sc.register( selector, SelectionKey.OP_READ );
-            users.add(new User("", sc));
+            users.add(sc);
           } else if (key.isReadable()) {
 
             SocketChannel sc = null;
@@ -123,7 +146,7 @@ public class ChatServer
 
               // It's incoming data on a connection -- process it
               sc = (SocketChannel)key.channel();
-              boolean ok = processInput( sc );
+              boolean ok = processInput( sc, users.getWithSC(sc) );
 
               // If the connection is dead, remove it from the selector
               // and close it
@@ -162,29 +185,43 @@ public class ChatServer
     }
   }
 
-  static private boolean changeNick(String newNick, SocketChannel sc){
-    int index, available=1;
-    for(int i=0;i<users.size();i++){
-      cur = users.get(i);
-      if(cur.sc==sc) index=i;
-      if(cur.nick.equals(name)){
-        available=0;
-        break;
+  static private boolean join(String room, User toJoin){
+    SocketChannel sc = toJoin.sc;
+    if(toJoin.nick.equals("")) return false;
+    for(int i=0;i<rooms.rooms.size();i++){
+      if(room.equals(rooms.rooms.get(i).name)){
+        rooms.rooms.get(i).usersInRoom.add(sc);
+        users.users.get(users.users.indexOf(toJoin)).room=rooms.rooms.get(i);
+        return true;
       }
     }
-    if(available==1){
-      User changedNick = users.get(i)
-      users.get(i) = users.get(i)
+    Room newRoom = new Room(room);
+    newRoom.usersInRoom.add(sc);
+    rooms.rooms.add(newRoom); 
+    users.users.get(users.users.indexOf(toJoin)).room=newRoom;
+    return true;
+  }
+
+  static private void sendMessage (User user, ByteBuffer buffer, boolean sender) throws IOException {
+    if(sender){
+      Room room = rooms.find(user.room.name);
+      for(int i=0;i<room.usersInRoom.size();i++){
+        sendMessage(users.getWithSC(room.usersInRoom.get(i)), buffer, false);
+        if(i+1<room.usersInRoom.size()) buffer.rewind();
+      }
+    }
+    else{
+      user.sc.write(buffer);
     }
   }
+
   // Just read the message from the socket and send it to stdout
-  static private boolean processInput( SocketChannel sc ) throws IOException {
+  static private boolean processInput( SocketChannel sc, User user) throws IOException {
     // Read the message to the buffer
     /*System.out.println("SocketChannel: " + sc.getRemoteAddress().toString().split(":")[sc.getRemoteAddress().toString().split(":").length-1]);
     for(int i=0;i<channels.size();i++){
       System.out.println(channels.get(i).first);
     }*/
-    String commands[] = {"nick", "join", "leave", "bye", "priv"};
     buffer.clear();
     sc.read( buffer );
     buffer.flip();
@@ -198,31 +235,6 @@ public class ChatServer
     String message = decoder.decode(buffer).toString();
     System.out.println(message);
     buffer.flip();
-
-    /*if(message.length()>0 && message.charAt(0)=='/'){
-      message = message.substring(1,message.length()-1);
-      System.out.println(message);
-      for(int i=0;i<commands.length;i++){
-        System.out.println(message.split(" ")[0]);
-        System.out.println(commands[i]);
-        if(message.split(" ")[0].trim().equalsIgnoreCase(commands[i])){
-          isCommand=1;
-          message += " -> THIS IS A COMMAND!!!!!!!!!!\n";
-          System.out.println("got to put bytes as a command");
-          System.out.println(message);
-          sc.write(buffer.wrap(message.getBytes()));
-          System.out.println("wrote to buffer as a command");
-          buffer.flip();
-          return true;
-        }
-      }
-      System.out.println("after / check : " + message);
-      System.out.println("got to put bytes");
-      sc.write(buffer.wrap((message + "\n").getBytes()));
-      System.out.println("wrote to buffer");
-      buffer.flip();
-      return true;
-    }*/
     if(message.length()>0 && message.charAt(0)=='/'){
       message = message.substring(1,message.length()-1);
       System.out.println(message);
@@ -233,10 +245,33 @@ public class ChatServer
       if(message.split(" ")[0].trim().equalsIgnoreCase("nick")){
         String name = message.substring(message.split(" ")[0].trim().length()+1,message.length());
         System.out.println(name);
-        
-        sc.write(buffer.wrap(name.getBytes()));
-        return false;
+        System.out.println("OLD NICK -> " + users.getWithSC(sc).nick);
+        if(!users.changeNick(name, sc, users)){
+          System.out.println("NEW NICK -> " + users.getWithSC(sc).nick);
+          sc.write(buffer.wrap((new String("ERROR\n")).getBytes()));
+          return true;
+        }
+        System.out.println("NEW NICK -> " + users.getWithSC(sc).nick);
+        sc.write(buffer.wrap((new String("OK\n")).getBytes()));
+        return true;
       }
+      if(message.split(" ")[0].trim().equalsIgnoreCase("join")){
+        String room = message.substring(message.split(" ")[0].trim().length()+1,message.length());
+        if(!join(room, user)){
+          sc.write(buffer.wrap(("ERROR\n").getBytes()));
+          return true;
+        }
+        for(int i=0;i<rooms.rooms.size();i++){
+          System.out.print("Room " + i + " : " + rooms.rooms.get(i).name + "   ->   ");
+          for(int j=0;j<rooms.rooms.get(i).usersInRoom.size();j++){
+            System.out.print(" " + rooms.rooms.get(i).usersInRoom.get(j) + " ");
+          }
+          System.out.println();
+        }
+        return true;
+      }
+
+
       System.out.println("after / check : " + message);
       System.out.println("got to put bytes");
       sc.write(buffer.wrap((message + "\n").getBytes()));
@@ -245,9 +280,13 @@ public class ChatServer
       return true;
     }
     System.out.println("after / check : " + message);
+    if(user.room==null){
+      sc.write(buffer.wrap(("ERROR\n").getBytes()));
+      return true;
+    }
     buffer.rewind();
     System.out.println("got to put bytes");
-    sc.write(buffer);
+    sendMessage(user, buffer, true);
     System.out.println("wrote to buffer");
     buffer.flip();
 
