@@ -77,14 +77,24 @@ public class ChatClient {
     public void newMessage(String message) throws IOException {
         // PREENCHER AQUI com código que envia a mensagem ao servidor
         System.out.println(message);
+        if(message.charAt(0)=='/') message=message.substring(1,message.length());
         String serverMessage;
         byte[] send = (message + '\n').getBytes();
         outToServer.write(send);
         System.out.println("wrote to server");
-        serverMessage = inFromServer.readLine();
+    }
+    public void fromServer(String serverMessage) throws IOException {
         System.out.println("read from server");
+        System.out.println(serverMessage);
         if(serverMessage.split(" ")[0].trim().equalsIgnoreCase("bye")) System.exit(0);
-        serverMessage = "FROM SERVER: " + serverMessage + "\n";
+        if(serverMessage.split(" ")[0].trim().equalsIgnoreCase("message")){
+            String name = serverMessage.split(" ")[1].trim();
+            serverMessage = serverMessage.substring(name.length()+7, serverMessage.length())+'\n';
+            System.out.println(serverMessage);
+            printMessage(name + ": " + serverMessage);
+            return;
+        }
+        serverMessage += "\n";
         System.out.println(serverMessage);
         printMessage(serverMessage);
         return;
@@ -98,6 +108,14 @@ public class ChatClient {
         inFromUser = new BufferedReader(new InputStreamReader(System.in));
         outToServer = new DataOutputStream(clientSocket.getOutputStream());
         inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+        Thread newThread = new Thread(() -> {
+            while(true){
+                try {
+                  fromServer(inFromServer.readLine());
+                } catch( IOException ie ) {  }
+            }
+        });
+        newThread.start();
     }
     
 
