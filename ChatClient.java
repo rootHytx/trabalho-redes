@@ -18,10 +18,10 @@ public class ChatClient {
     // ser colocadas aqui
     private String server;
     private int port;
-    BufferedReader inFromUser;
-    Socket clientSocket;
-    DataOutputStream outToServer;
-    BufferedReader inFromServer;
+    private BufferedReader inFromUser;
+    private Socket clientSocket;
+    private DataOutputStream outToServer;
+    private BufferedReader inFromServer;
 
 
     
@@ -69,10 +69,6 @@ public class ChatClient {
         // construtor, deve ser colocado aqui
         this.server=server;
         this.port=port;
-        clientSocket = new Socket(server, port);
-        inFromUser = new BufferedReader(new InputStreamReader(System.in));
-        outToServer = new DataOutputStream(clientSocket.getOutputStream());
-        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
     }
 
 
@@ -82,8 +78,8 @@ public class ChatClient {
         // PREENCHER AQUI com código que envia a mensagem ao servidor
         System.out.println(message);
         String serverMessage;
-        
-        outToServer.writeBytes(message + "\n");
+        byte[] send = (message + '\n').getBytes();
+        outToServer.write(send);
         System.out.println("wrote to server");
         serverMessage = inFromServer.readLine();
         System.out.println("read from server");
@@ -98,10 +94,10 @@ public class ChatClient {
     // Método principal do objecto
     public void run() throws IOException {
         // PREENCHER AQUI
-        /*clientSocket = new Socket(server, port);
+        clientSocket = new Socket(server, port);
         inFromUser = new BufferedReader(new InputStreamReader(System.in));
         outToServer = new DataOutputStream(clientSocket.getOutputStream());
-        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));*/
+        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
     }
     
 

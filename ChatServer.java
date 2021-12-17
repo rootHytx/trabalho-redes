@@ -5,7 +5,10 @@ import java.nio.channels.*;
 import java.nio.charset.*;
 import java.util.*;
 
-
+/*
+CLASSE ROOM:
+  classe para definir uma sala, apenas contém o nome da sala e os users nessa sala
+*/
 class Room{
   public String name;
   public List<SocketChannel> usersInRoom = new ArrayList<>();
@@ -17,6 +20,11 @@ class Room{
   }
 }
 
+/*
+CLASSE ROOMS:
+  classe para definir uma lista de salas e funções adicionais para tornar comandos "join", "leave" mais fáceis
+*/
+
 class Rooms{
   public List<Room> rooms = new ArrayList<>();
   public Room find(String name){
@@ -27,6 +35,15 @@ class Rooms{
   }
 }
 
+/*
+CLASSE USER:
+  classe para definir um utilizador, AKA, um channel na socket utilizada.
+  contém o nickname do user, inicialmente nulo, o socketchannel para onde enviamos mensagens específicas e
+  o room em que se encontra, inicialmente nulo também. inicializamos a string nick como "" para podermos 
+  comparar mais tarde e sabermos se este user não definiu ainda um nickname, não podendo entrar em
+  nenhuma sala
+*/
+
 class User{
   public String nick = "";
   public SocketChannel sc;
@@ -35,6 +52,18 @@ class User{
     this.sc = sc;
   }
 }
+
+/*
+CLASSE USERS:
+  classe para definir uma lista de utilizadores e várias funções adicionais para ajudar à procura de users
+  ao longo do programa.
+  add e remove servem para adicionar e remover um novo utilizador quando existe uma nova conexão
+  changeNick serve para mudar o nickname de um user e garantir que a lista está atualizada
+  getWithNick, getWithSC servem para, respetivamente, obter um user da lista com o nickname
+  (se ele tiver um, mas esta função é importante para o comando "priv"), ou com o socketchannel 
+  (muito mais utilizado pois é mais fácil e o user garantidamente tem um socketchannel,
+  mas não um nickname)
+*/
 
 class Users{
   public List<User> users = new ArrayList<>();
@@ -69,9 +98,14 @@ class Users{
 public class ChatServer
 {
   // A pre-allocated buffer for the received data
-  static final int size = 10000;
+
+  static final int size = 10000; //variável para definir um tamanho
   static private ByteBuffer buffer = ByteBuffer.allocate( size );
-  static Users users = new Users();
+
+  //inicialização de um Users, o mesmo que uma nova lista mas com funções extra que são muito úteis
+  static Users users = new Users(); 
+
+  //inicialização de um Rooms, o mesmo que uma nova lista mas com funções extra que são muito úteis
   static Rooms rooms = new Rooms();
 
   // Decoder for incoming text -- assume UTF-8
@@ -137,7 +171,9 @@ public class ChatServer
 
             // Register it with the selector, for reading
             sc.register( selector, SelectionKey.OP_READ );
-            users.add(sc);
+
+            users.add(sc);  //ADICIONAR NOVO USER À LISTA DE USERS
+          
           } else if (key.isReadable()) {
 
             SocketChannel sc = null;
@@ -184,7 +220,7 @@ public class ChatServer
       System.err.println( ie );
     }
   }
-
+  //função para adicionar um user a uma sala, e se essa não existir, criá-la
   static private boolean join(String room, User toJoin){
     SocketChannel sc = toJoin.sc;
     if(toJoin.nick.equals("")) return false;
@@ -201,7 +237,7 @@ public class ChatServer
     users.users.get(users.users.indexOf(toJoin)).room=newRoom;
     return true;
   }
-
+  //função para mandar mensagem para os users de uma sala, apenas, não para todos na socket
   static private void sendMessage (User user, ByteBuffer buffer, boolean sender) throws IOException {
     if(sender){
       Room room = rooms.find(user.room.name);
@@ -218,10 +254,6 @@ public class ChatServer
   // Just read the message from the socket and send it to stdout
   static private boolean processInput( SocketChannel sc, User user) throws IOException {
     // Read the message to the buffer
-    /*System.out.println("SocketChannel: " + sc.getRemoteAddress().toString().split(":")[sc.getRemoteAddress().toString().split(":").length-1]);
-    for(int i=0;i<channels.size();i++){
-      System.out.println(channels.get(i).first);
-    }*/
     buffer.clear();
     sc.read( buffer );
     buffer.flip();
@@ -235,39 +267,52 @@ public class ChatServer
     String message = decoder.decode(buffer).toString();
     System.out.println(message);
     buffer.flip();
-    if(message.length()>0 && message.charAt(0)=='/'){
-      message = message.substring(1,message.length()-1);
+    //se começar por / processamos e assumimos que é um comando, se não for, continuamos e removemos o caracter
+    if(message.length()>0 && message.charAt(0)=='/'){ 
+      message = message.substring(1,message.length()-1); //queremos apenas a mensagem sem '/'
       System.out.println(message);
-      if(message.split(" ")[0].trim().equalsIgnoreCase("bye")){
+
+      if(message.split(" ")[0].trim().equalsIgnoreCase("bye")){ //comando "bye"
           sc.write(buffer.wrap((message.split(" ")[0].trim() + "\n").getBytes()));
           return false;
       }
-      if(message.split(" ")[0].trim().equalsIgnoreCase("nick")){
+
+      if(message.split(" ")[0].trim().equalsIgnoreCase("nick")){ //comando "nick"
+        //separamos por espaços e obtemos a mensagem desde o último caracter do comando até o fim
+        //sendo esta string, neste caso, o novo nickname
         String name = message.substring(message.split(" ")[0].trim().length()+1,message.length());
         System.out.println(name);
         System.out.println("OLD NICK -> " + users.getWithSC(sc).nick);
-        if(!users.changeNick(name, sc, users)){
+        if(!users.changeNick(name, sc, users)){ //change failed, imprime error
           System.out.println("NEW NICK -> " + users.getWithSC(sc).nick);
           sc.write(buffer.wrap((new String("ERROR\n")).getBytes()));
           return true;
         }
+        //change ok, imprime ok
         System.out.println("NEW NICK -> " + users.getWithSC(sc).nick);
         sc.write(buffer.wrap((new String("OK\n")).getBytes()));
         return true;
       }
-      if(message.split(" ")[0].trim().equalsIgnoreCase("join")){
+
+      if(message.split(" ")[0].trim().equalsIgnoreCase("join")){ //comando "bye"
+        //separamos por espaços e obtemos a mensagem desde o último caracter do comando até o fim
+        //sendo esta string, neste caso, a sala
         String room = message.substring(message.split(" ")[0].trim().length()+1,message.length());
-        if(!join(room, user)){
+        if(!join(room, user)){ //unable to join, nick não definido
           sc.write(buffer.wrap(("ERROR\n").getBytes()));
           return true;
         }
-        for(int i=0;i<rooms.rooms.size();i++){
+        //joined room
+
+        //teste
+        /*for(int i=0;i<rooms.rooms.size();i++){
           System.out.print("Room " + i + " : " + rooms.rooms.get(i).name + "   ->   ");
           for(int j=0;j<rooms.rooms.get(i).usersInRoom.size();j++){
             System.out.print(" " + rooms.rooms.get(i).usersInRoom.get(j) + " ");
           }
           System.out.println();
-        }
+        }*/
+
         return true;
       }
 
@@ -280,10 +325,12 @@ public class ChatServer
       return true;
     }
     System.out.println("after / check : " + message);
+    //queremos enviar mensagem normal mas não estamos presentes em uma sala
     if(user.room==null){
       sc.write(buffer.wrap(("ERROR\n").getBytes()));
       return true;
     }
+    //se tudo bem:
     buffer.rewind();
     System.out.println("got to put bytes");
     sendMessage(user, buffer, true);
