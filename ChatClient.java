@@ -77,7 +77,7 @@ public class ChatClient {
     // na caixa de entrada
     public void newMessage(String message) throws IOException {
         // PREENCHER AQUI com código que envia a mensagem ao servidor
-        System.out.println(message);
+        //System.out.println(message);
         if(message.length()>0 && message.charAt(0)=='/'){
             boolean command=false;
             for(int i=0;i<commandList.length;i++){
@@ -88,44 +88,52 @@ public class ChatClient {
         String serverMessage;
         byte[] send = (message + '\n').getBytes();
         outToServer.write(send);
-        System.out.println("wrote to server");
+        //System.out.println("wrote to server");
     }
     public void fromServer(String serverMessage) throws IOException {
-        System.out.println("read from server");
-        System.out.println(serverMessage);
+        //System.out.println("read from server");
+        //System.out.println(serverMessage);
         if(serverMessage.equalsIgnoreCase("bye")) System.exit(0);
         if(serverMessage.split(" ")[0].trim().equalsIgnoreCase("joined")){
             String name = serverMessage.split(" ")[1].trim();
             serverMessage = name + " juntou-se\n";
-            System.out.println(serverMessage);
+            //System.out.println(serverMessage);
+            printMessage(serverMessage);
+            return;
+        }
+        if(serverMessage.split(" ")[0].trim().equalsIgnoreCase("newnick")){
+            String oldname = serverMessage.split(" ")[1].trim();
+            String newname = serverMessage.split(" ")[2].trim();
+            serverMessage = oldname + " mudou de nome para " + newname + '\n';
+            //System.out.println(serverMessage);
             printMessage(serverMessage);
             return;
         }
         if(serverMessage.split(" ")[0].trim().equalsIgnoreCase("message")){
             String name = serverMessage.split(" ")[1].trim();
             serverMessage = serverMessage.substring(name.length()+8, serverMessage.length())+'\n';
-            System.out.println(serverMessage);
+            //System.out.println(serverMessage);
             printMessage(name + ":" + serverMessage);
             return;
         }
         if(serverMessage.split(" ")[0].trim().equalsIgnoreCase("priv")){
             serverMessage=serverMessage.trim();
             String name = serverMessage.split(" ")[1].trim();
-            System.out.println("OLD PRIV SRVR MSG:   " + serverMessage);
+            //System.out.println("OLD PRIV SRVR MSG:   " + serverMessage);
             serverMessage = "mensagem de " + name + " : " + serverMessage.substring(name.length()+11,serverMessage.length()).trim() + "\n";
-            System.out.println(serverMessage);
+            //System.out.println(serverMessage);
             printMessage(serverMessage);
             return;
         }
         if(serverMessage.split(" ")[0].trim().equalsIgnoreCase("left")){
             String name = serverMessage.split(" ")[1].trim();
             serverMessage = name + " saiu\n";
-            System.out.println(serverMessage);
+            //System.out.println(serverMessage);
             printMessage(serverMessage);
             return;
         }
         serverMessage += "\n";
-        System.out.println(serverMessage);
+        //System.out.println(serverMessage);
         printMessage(serverMessage);
         return;
     }

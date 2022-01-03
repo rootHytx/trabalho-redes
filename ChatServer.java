@@ -102,8 +102,8 @@ class Users{
   public boolean changeNick(String name, SocketChannel sc, Users usersSuperior){
     User toChange = usersSuperior.getWithSC(sc);
     for(int i=0;i<users.size();i++){
-      System.out.println("EVALUATING NICK, EXISTING = " + users.get(i).nick);
-      System.out.println("EVALUATING NICK, NEW = " + name);
+      //System.out.println("EVALUATING NICK, EXISTING = " + users.get(i).nick);
+      //System.out.println("EVALUATING NICK, NEW = " + name);
       if(users.get(i).nick.equals(name) && users.get(i)!=toChange) return false;
     }
     usersSuperior.getWithSC(sc).nick=name;
@@ -167,7 +167,7 @@ public class ChatServer
       // Register the ServerSocketChannel, so we can listen for incoming
       // connections
       ssc.register( selector, SelectionKey.OP_ACCEPT );
-      System.out.println( "Listening on port "+port );
+      //System.out.println( "Listening on port "+port );
 
       while (true) {
         // See if we've had any activity -- either an incoming connection,
@@ -193,7 +193,7 @@ public class ChatServer
             // It's an incoming connection.  Register this socket with
             // the Selector so we can listen for input on it
             Socket s = ss.accept();
-            System.out.println( "Got connection from "+s );
+            //System.out.println( "Got connection from "+s );
 
             // Make sure to make it non-blocking, so we can use a selector
             // on it.
@@ -223,12 +223,12 @@ public class ChatServer
                 Socket s = null;
                 try {
                   s = sc.socket();
-                  System.out.println( "Closing connection to "+s );
+                  //System.out.println( "Closing connection to "+s );
                   if(users.getWithSC(sc).room!=null){
                     Room watchers = rooms.find(users.getWithSC(sc).room.name);
                     for(int i=0;i<watchers.usersInRoom.size();i++){
                       if(watchers.usersInRoom.get(i)==sc) continue;
-                      System.out.println("CLOSING: USER IN ROOM ALREADY #" + i + " " + watchers.usersInRoom.get(i));
+                      //System.out.println("CLOSING: USER IN ROOM ALREADY #" + i + " " + watchers.usersInRoom.get(i));
                       sendMessage(users.getWithSC(watchers.usersInRoom.get(i)), buffer.wrap(("LEFT " + users.getWithSC(sc).nick + " " + "\n").getBytes()));
                     }
                   }
@@ -246,17 +246,17 @@ public class ChatServer
 
               try {
                 sc.close();
-              } catch( IOException ie2 ) { System.out.println( ie2 ); }
+              } catch( IOException ie2 ) { /*System.out.println( ie2 );*/ }
               if(users.getWithSC(sc).room!=null){
                 Room watchers = rooms.find(users.getWithSC(sc).room.name);
                 for(int i=0;i<watchers.usersInRoom.size();i++){
                   if(watchers.usersInRoom.get(i)==sc) continue;
-                  System.out.println("CLOSING: USER IN ROOM ALREADY #" + i + " " + watchers.usersInRoom.get(i));
+                  //System.out.println("CLOSING: USER IN ROOM ALREADY #" + i + " " + watchers.usersInRoom.get(i));
                   sendMessage(users.getWithSC(watchers.usersInRoom.get(i)), buffer.wrap(("LEFT " + users.getWithSC(sc).nick + " " + "\n").getBytes()));
                 }
               }
               remove(users.getWithSC(sc));
-              System.out.println( "Closed "+sc );
+              //System.out.println( "Closed "+sc );
             }
           }
         }
@@ -291,19 +291,19 @@ public class ChatServer
   static private void remove(User user){
     users.remove(user);
     if(user.room!=null) rooms.find(user.room.name).remove(user.sc);
-    System.out.println("REMOVED " + user.nick);
+    //System.out.println("REMOVED " + user.nick);
   }
 
   //função para mandar mensagem para os users de uma sala, apenas, não para todos na socket
   static private void sendMessage (Room room, ByteBuffer buffer) throws IOException {
     if(room==null) return;
-    System.out.println("USERS IN THE ROOM: " + room.usersInRoom.size());
+    //System.out.println("USERS IN THE ROOM: " + room.usersInRoom.size());
     buffer.flip();
     buffer.clear();
     String message = decoder.decode(buffer).toString().trim();
     buffer.flip();
     for(int i=0;i<room.usersInRoom.size();i++){
-      System.out.println("USER: " + room.usersInRoom.get(i));
+      //System.out.println("USER: " + room.usersInRoom.get(i));
       sendMessage(users.getWithSC(room.usersInRoom.get(i)), buffer.wrap((message + '\n').getBytes()));
     }
   }
@@ -324,8 +324,8 @@ public class ChatServer
 
     // Decode and print the message to stdout
     String message = decoder.decode(buffer).toString().trim();
-    if(bytes==-1) System.out.println("READ ERROR");
-    System.out.println(message);
+    //if(bytes==-1) System.out.println("READ ERROR");
+    //System.out.println(message);
     if(message.length()>0 && message.charAt(0)=='/') message=message.substring(1,message.length());
     if(message.split(" ")[0].trim().equalsIgnoreCase("bye")){ //comando "bye"
         if(user.room!=null){
@@ -347,28 +347,28 @@ public class ChatServer
       //separamos por espaços e obtemos a mensagem desde o último caracter do comando até o fim
       //sendo esta string, neste caso, o novo nickname
       String name = message.substring(message.split(" ")[0].trim().length()+1,message.length()).trim();
-      System.out.println(name);
+      //System.out.println(name);
       if(name.contains(" ")){
         sc.write(buffer.wrap((new String("ERROR\n")).getBytes()));
         return true;
       }
       String old = user.nick;
-      System.out.println("OLD NICK -> " + users.getWithSC(sc).nick);
+      //System.out.println("OLD NICK -> " + users.getWithSC(sc).nick);
       if(!users.changeNick(name, sc, users)){ //change failed, imprime error
-        System.out.println("NEW NICK -> " + users.getWithSC(sc).nick);
+        //System.out.println("NEW NICK -> " + users.getWithSC(sc).nick);
         sc.write(buffer.wrap((new String("ERROR\n")).getBytes()));
         return true;
       }
       //change ok, imprime ok
       if(users.getWithSC(sc).state==-1) users.getWithSC(sc).state=0;
-      System.out.println("NEW NICK -> " + users.getWithSC(sc).nick);
+      //System.out.println("NEW NICK -> " + users.getWithSC(sc).nick);
       sc.write(buffer.wrap((new String("OK\n")).getBytes()));
       if(user.room!=null){
-        System.out.println("USERS IN THE ROOM: " + rooms.find(user.room.name).usersInRoom.size());
+        //System.out.println("USERS IN THE ROOM: " + rooms.find(user.room.name).usersInRoom.size());
         for(int i=0;i<rooms.find(user.room.name).usersInRoom.size();i++){
-          System.out.println("USER: " + rooms.find(user.room.name).usersInRoom.get(i));
-          if(rooms.find(user.room.name).usersInRoom.get(i)==sc) continue;
-          sendMessage(users.getWithSC(rooms.find(user.room.name).usersInRoom.get(i)), buffer.wrap(("NEWNICK " + old + " " + name).getBytes()));
+          //System.out.println("USER: " + rooms.find(user.room.name).usersInRoom.get(i));
+          if(rooms.find(user.room.name).usersInRoom.get(i).equals(sc)) continue;
+          sendMessage(users.getWithSC(rooms.find(user.room.name).usersInRoom.get(i)), buffer.wrap(("NEWNICK " + old + " " + name + '\n').getBytes()));
         }
       }
       return true;
@@ -377,7 +377,15 @@ public class ChatServer
     if(message.split(" ")[0].trim().equalsIgnoreCase("join")){ //comando "bye"
       //separamos por espaços e obtemos a mensagem desde o último caracter do comando até o fim
       //sendo esta string, neste caso, a sala
+      if(message.length()<=4){
+        sc.write(buffer.wrap(("ERROR\n").getBytes()));
+        return true;
+      }
       String room = message.substring(message.split(" ")[0].trim().length()+1,message.length()).trim();
+      if(message.length()<=message.split(" ")[1].trim().length()+1 || room.equals("")){
+        sc.write(buffer.wrap(("ERROR\n").getBytes()));
+        return true;
+      }
       Room watchers = rooms.find(room);
       if(users.getWithSC(sc).state==1){
         sendMessage(user.room, buffer.wrap(("LEFT " + user.nick + " " + "\n").getBytes()));
@@ -389,11 +397,11 @@ public class ChatServer
       users.getWithSC(sc).state=1;
       sc.write(buffer.wrap(("OK\n").getBytes()));
       if(watchers!=null){
-        System.out.println("SENDER USER: " + user.nick);
+        //System.out.println("SENDER USER: " + user.nick);
         for(int i=0;i<watchers.usersInRoom.size();i++){
           if(watchers.usersInRoom.get(i)==sc) continue;
-          System.out.println("USER IN ROOM ALREADY #" + i + " " + watchers.usersInRoom.get(i));
-          System.out.println("USER IN ROOM ALREADY #" + i + " " + watchers.usersInRoom.get(i));
+          //System.out.println("USER IN ROOM ALREADY #" + i + " " + watchers.usersInRoom.get(i));
+          //System.out.println("USER IN ROOM ALREADY #" + i + " " + watchers.usersInRoom.get(i));
           sendMessage(users.getWithSC(watchers.usersInRoom.get(i)), buffer.wrap(("JOINED " + user.nick + " " + "\n").getBytes()));
         }
       }
@@ -410,6 +418,7 @@ public class ChatServer
         rooms.find(old.name).usersInRoom.remove(sc);
         sendMessage(old, buffer.wrap(("LEFT " + user.nick + " " + "\n").getBytes()));
         sc.write(buffer.wrap(("OK\n").getBytes()));
+        users.getWithSC(sc).state=0;
         return true;
     }
 
@@ -423,27 +432,27 @@ public class ChatServer
           return true;
         }
         String receiver = message.split(" ")[1].trim();
-        System.out.println(receiver + "  : " + users.getWithNick(receiver).nick);
+        //System.out.println(receiver + "  : " + users.getWithNick(receiver).nick);
         if(message.length()<=message.split(" ")[1].trim().length()+1 || receiver.equals("") || users.getWithNick(receiver)==null){
           sc.write(buffer.wrap(("ERROR\n").getBytes()));
           return true;
         }
         message = message.substring(message.split(" ")[1].trim().length()+1,message.length()).trim();
-        System.out.println(users.getWithNick(receiver).sc + " <- RECEIVER");
+        //System.out.println(users.getWithNick(receiver).sc + " <- RECEIVER");
         sendMessage(users.getWithNick(receiver), buffer.wrap(("PRIV " + user.nick + " " + message + "\n").getBytes()));
         return true;
     }
 
-    System.out.println("after / check : " + message);
+    //System.out.println("after / check : " + message);
     //queremos enviar mensagem normal mas não estamos presentes em uma sala
     if(user.room==null){
       sc.write(buffer.wrap(("ERROR\n").getBytes()));
       return true;
     }
     //se tudo bem:
-    System.out.println("got to put bytes");
+    //System.out.println("got to put bytes");
     sendMessage(user.room, buffer.wrap(("MESSAGE " + user.nick + " " + message + "\n").getBytes()));
-    System.out.println("wrote to buffer");
+    //System.out.println("wrote to buffer");
     buffer.flip();
 
     return true;
